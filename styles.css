@@ -347,6 +347,8 @@ a:hover { text-decoration: underline; }
 }
 .leaflet-bar a:hover { background: var(--surface-2); color: var(--accent); }
 .leaflet-bar a.leaflet-disabled { background: var(--ground); color: var(--faint); }
+/* darken the OSM fallback tiles so they still match the theme */
+.osm-fallback .leaflet-tile { filter: invert(1) hue-rotate(180deg) brightness(.95) contrast(.9); }
 
 /* one orchestrated moment: the sweep scan */
 .scanline {

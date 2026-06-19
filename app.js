@@ -75,18 +75,37 @@ function initMap() {
     attributionControl: true,
   });
 
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+  const OSM_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+  const carto = L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
     subdomains: "abcd",
     maxZoom: 20,
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &middot; &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    attribution: OSM_ATTR + ' &middot; &copy; <a href="https://carto.com/attributions">CARTO</a>',
   }).addTo(state.map);
+
+  // Some ad/privacy blockers block cartocdn.com, which would leave a blank dark
+  // map. If CARTO tiles repeatedly fail, fall back to standard OSM tiles so a
+  // map ALWAYS shows. A few stray errors are tolerated before switching.
+  let tileErrors = 0, switched = false;
+  carto.on("tileerror", () => {
+    if (switched || ++tileErrors < 4) return;
+    switched = true;
+    state.map.removeLayer(carto);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: OSM_ATTR,
+    }).addTo(state.map);
+    document.getElementById("map").classList.add("osm-fallback");
+    toast("Dark map tiles were blocked, so OpenStreetMap tiles are used instead.", false, 5000);
+  });
 
   state.layer = L.layerGroup().addTo(state.map);
 
   state.map.on("moveend", onMove);
-  // Leaflet needs a size recalc once the fl/grid layout has settled.
-  setTimeout(() => state.map.invalidateSize(), 0);
   window.addEventListener("resize", () => state.map.invalidateSize());
+  // Recalculate size once layout + fonts settle (guards a cold-load zero-height map).
+  setTimeout(() => state.map.invalidateSize(), 0);
+  setTimeout(() => state.map.invalidateSize(), 400);
+  window.addEventListener("load", () => state.map.invalidateSize());
   onMove();
 }
 
