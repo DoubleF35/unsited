@@ -1,0 +1,7 @@
+# No secrets live in this repo — the API key is stored in the browser only.
+# Just keep OS / editor cruft out.
+.DS_Store
+Thumbs.db
+*.log
+.vscode/
+.idea/

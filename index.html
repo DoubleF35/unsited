@@ -1,0 +1,153 @@
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Unsited — local businesses with no website, on the map</title>
+<meta name="description" content="Sweep any area of the map and surface the local businesses that have no website. A prospecting tool built on Google Maps." />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2310201C'/%3E%3Ccircle cx='16' cy='16' r='8' fill='none' stroke='%23E9A23C' stroke-width='2.4' stroke-dasharray='38 12' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='16' r='2.4' fill='%23E9A23C'/%3E%3C/svg%3E" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Hanken+Grotesk:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+
+<!-- ============================ ONBOARDING ============================ -->
+<div class="gate" id="gate" hidden>
+  <div class="gate__card">
+    <div class="brand brand--lg">
+      <svg class="brand__mark" viewBox="0 0 32 32" aria-hidden="true">
+        <circle cx="16" cy="16" r="11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-dasharray="52 17" stroke-linecap="round" />
+        <circle cx="16" cy="16" r="3" fill="currentColor" />
+      </svg>
+      <span class="brand__name">Unsited</span>
+    </div>
+    <h1 class="gate__title">Connect your Google Maps key</h1>
+    <p class="gate__lede">Unsited runs entirely in your browser and talks to Google directly. Paste an API key with <strong>Maps&nbsp;JavaScript&nbsp;API</strong> and <strong>Places&nbsp;API&nbsp;(New)</strong> enabled. The key is kept in this browser only — it is never sent anywhere else or stored in the project.</p>
+
+    <form class="gate__form" id="keyForm" autocomplete="off">
+      <label class="field">
+        <span class="field__label">Google Maps API key</span>
+        <input class="field__input" id="keyInput" type="text" inputmode="text" spellcheck="false" autocapitalize="off" placeholder="AIza…" aria-describedby="keyHint" required />
+      </label>
+      <p class="field__hint" id="keyHint">Restrict the key to your site's URL before going live. <a href="#" id="setupLink">Setup steps →</a></p>
+      <button class="btn btn--primary" type="submit">Save key &amp; open the map</button>
+    </form>
+
+    <details class="gate__help" id="setupHelp">
+      <summary>How to get a key (2 minutes)</summary>
+      <ol class="steps">
+        <li>Open <a href="https://console.cloud.google.com/" target="_blank" rel="noopener">Google Cloud Console</a> and pick or create a project (a billing account must be attached).</li>
+        <li>In <em>APIs &amp; Services → Library</em>, enable <strong>Maps JavaScript API</strong> and <strong>Places API (New)</strong>. Both are required.</li>
+        <li>In <em>Credentials → Create credentials → API key</em>, copy the key.</li>
+        <li>Edit the key → <em>Application restrictions → Websites</em> → add your address, e.g. <code>https://yourname.github.io/*</code>.</li>
+        <li>Under <em>API restrictions</em>, limit it to the two APIs above. Save, then paste it here.</li>
+      </ol>
+      <p class="gate__cost">Heads up on cost: detecting "no website" forces Google's <strong>Enterprise</strong> tier (~$35 per 1,000 calls). You get <strong>1,000 free calls a month</strong>. Each area sweep is one call per grid cell — Unsited shows the count before you run it.</p>
+    </details>
+  </div>
+</div>
+
+<!-- ============================ APP ============================ -->
+<div class="app" id="app" hidden>
+  <header class="topbar">
+    <div class="brand">
+      <svg class="brand__mark" viewBox="0 0 32 32" aria-hidden="true">
+        <circle cx="16" cy="16" r="11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-dasharray="52 17" stroke-linecap="round" />
+        <circle cx="16" cy="16" r="3" fill="currentColor" />
+      </svg>
+      <span class="brand__name">Unsited</span>
+      <span class="brand__tag">local businesses with no website</span>
+    </div>
+
+    <div class="topbar__right">
+      <div class="readout" id="readout" title="Map centre and zoom">
+        <span class="readout__coord" id="coordOut">—</span>
+        <span class="readout__zoom" id="zoomOut">z—</span>
+      </div>
+      <button class="iconbtn" id="locateBtn" type="button" title="Go to my location" aria-label="Go to my location">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+      <button class="iconbtn" id="keyBtn" type="button" title="API key settings" aria-label="API key settings">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 7a4 4 0 1 0-3.5 6.9L4 20.4V22h3l1-1v-2h2v-2h2l1.5-1.5A4 4 0 0 0 14 7Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="15.5" cy="8.5" r="1.1" fill="currentColor"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="workspace">
+    <aside class="panel" id="panel">
+      <section class="block" aria-labelledby="sweepHd">
+        <h2 class="block__hd" id="sweepHd"><span class="block__num">01</span> Sweep an area</h2>
+
+        <div class="ctl">
+          <span class="ctl__label">Category</span>
+          <div class="chips" id="catChips" role="radiogroup" aria-label="Business category"></div>
+        </div>
+
+        <div class="ctl">
+          <span class="ctl__label">Grid resolution</span>
+          <div class="chips" id="radiusChips" role="radiogroup" aria-label="Grid resolution"></div>
+        </div>
+
+        <div class="estimate" id="estimate">
+          <div class="estimate__row">
+            <span class="estimate__k">Coverage</span>
+            <span class="estimate__v" id="tileOut">—</span>
+          </div>
+          <div class="estimate__row">
+            <span class="estimate__k">Calls / cost</span>
+            <span class="estimate__v" id="costOut">—</span>
+          </div>
+        </div>
+
+        <button class="btn btn--primary btn--sweep" id="searchBtn" type="button">
+          <span class="btn__label">Search this area</span>
+          <span class="btn__prog" id="searchProg" hidden></span>
+        </button>
+        <p class="note" id="capNote" hidden></p>
+        <p class="note note--free">Enterprise tier: ~$0.035 / call · 1,000 free each month. <span id="sessionOut"></span></p>
+      </section>
+
+      <section class="block block--results" aria-labelledby="resHd">
+        <h2 class="block__hd" id="resHd">
+          <span class="block__num">02</span> Leads
+          <span class="count" id="countOut" hidden>0</span>
+        </h2>
+        <div class="results" id="results">
+          <div class="empty" id="empty">
+            <svg class="empty__mark" viewBox="0 0 48 48" aria-hidden="true">
+              <circle cx="24" cy="24" r="15" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="4 6" opacity="0.6"/>
+              <circle cx="24" cy="24" r="3" fill="currentColor"/>
+            </svg>
+            <p class="empty__title">No sweep yet</p>
+            <p class="empty__body">Pan to a neighbourhood, pick a category, and run a sweep. Businesses with no website land here — and as gold pins on the map.</p>
+          </div>
+        </div>
+      </section>
+    </aside>
+
+    <div class="map-wrap" id="mapWrap">
+      <div class="map" id="map"></div>
+      <div class="scanline" id="scanline" aria-hidden="true"></div>
+    </div>
+  </main>
+</div>
+
+<!-- ============================ TOAST ============================ -->
+<div class="toast" id="toast" role="status" hidden></div>
+
+<!-- lead card template -->
+<template id="leadTpl">
+  <article class="lead" tabindex="0">
+    <header class="lead__top">
+      <span class="lead__idx"></span>
+      <h3 class="lead__name"></h3>
+    </header>
+    <p class="lead__type"></p>
+    <p class="lead__addr"></p>
+    <div class="lead__actions">
+      <a class="lead__act lead__tel" hidden>Call</a>
+      <a class="lead__act lead__maps" target="_blank" rel="noopener">Maps ↗</a>
+      <button class="lead__act lead__copy" type="button">Copy</button>
+    </div>
+  </article>
+</template>
+
+<script src="app.js"></script>
